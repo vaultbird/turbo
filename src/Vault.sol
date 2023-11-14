@@ -48,9 +48,10 @@ contract Vault is ERC4626, Ownable {
     GlobalConfig memory g,
     BPS memory b,
     Recipients memory r
-  ) Ownable(g.admin) ERC20(g.name, g.symbol) ERC4626(g.asset) {
-    _bps = b;
-    _recipients = r;
+  ) Ownable(msg.sender) ERC20(g.name, g.symbol) ERC4626(g.asset) {
+    setBps(b);
+    setRecipients(r);
+    transferOwnership(g.admin);
   }
 
   /// @dev Default public getters no good, can't use struct directly
@@ -63,7 +64,7 @@ contract Vault is ERC4626, Ownable {
     return _recipients;
   }
 
-  function setFees(BPS memory b) external onlyOwner {
+  function setBps(BPS memory b) public onlyOwner {
     uint256 total = b.treasury + b.staker + b.creator + b.compounder;
     if (total > BPS_SCALE) revert InvalidBPS();
     if (b.fee > MAX_FEE_BPS) revert InvalidBPS();
@@ -71,7 +72,7 @@ contract Vault is ERC4626, Ownable {
     emit BPSUpdated(_bps);
   }
 
-  function setRecipients(Recipients memory r) external onlyOwner {
+  function setRecipients(Recipients memory r) public onlyOwner {
     if (r.treasury == address(0)) revert InvalidRecipients();
     if (r.staker == address(0)) revert InvalidRecipients();
     if (r.creator == address(0)) revert InvalidRecipients();

@@ -65,7 +65,7 @@ contract VaultTest is Test {
     assertEq(r.creator, creator);
   }
 
-  function test_setFees() public {
+  function test_setBps() public {
     Vault.BPS memory newBps = Vault.BPS({
       fee: 1000,
       treasury: 5000,
@@ -75,7 +75,7 @@ contract VaultTest is Test {
     });
 
     vm.startPrank(admin);
-    vault.setFees(newBps);
+    vault.setBps(newBps);
     vm.stopPrank();
 
     Vault.BPS memory bps = vault.bps();
@@ -86,7 +86,7 @@ contract VaultTest is Test {
     assertEq(bps.compounder, newBps.compounder);
   }
 
-  function test_setFeesRevertNonAdmin() public {
+  function test_setBpsRevertNonAdmin() public {
     Vault.BPS memory newBps = Vault.BPS({
       fee: 1000,
       treasury: 5000,
@@ -102,10 +102,10 @@ contract VaultTest is Test {
         creator
       )
     );
-    vault.setFees(newBps);
+    vault.setBps(newBps);
   }
 
-  function test_setFeesRevertInvalidBPS() public {
+  function test_setBpsRevertInvalidBPS() public {
     Vault.BPS memory newBps = Vault.BPS({
       fee: 1000,
       treasury: 5000,
@@ -116,7 +116,7 @@ contract VaultTest is Test {
 
     vm.startPrank(admin);
     vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setFees(newBps);
+    vault.setBps(newBps);
 
     newBps = Vault.BPS({
       fee: 10000,
@@ -128,7 +128,7 @@ contract VaultTest is Test {
 
     vm.startPrank(admin);
     vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setFees(newBps);
+    vault.setBps(newBps);
   }
 
   function test_setRecipients() public {
@@ -166,28 +166,34 @@ contract VaultTest is Test {
   }
 
   function test_setRecipientsRevertInvalidRecipients() public {
-    Vault.BPS memory newBps = Vault.BPS({
-      fee: 1000,
-      treasury: 5000,
-      staker: 5000,
-      creator: 500,
-      compounder: 500
+    Vault.Recipients memory r = Vault.Recipients({
+      treasury: address(0),
+      staker: vm.addr(0x02),
+      creator: vm.addr(0x03)
     });
 
     vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setFees(newBps);
+    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
+    vault.setRecipients(r);
 
-    newBps = Vault.BPS({
-      fee: 10000,
-      treasury: 4000,
-      staker: 5000,
-      creator: 500,
-      compounder: 500
+    r = Vault.Recipients({
+      treasury: vm.addr(0x02),
+      staker: address(0),
+      creator: vm.addr(0x03)
     });
 
     vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setFees(newBps);
+    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
+    vault.setRecipients(r);
+
+    r = Vault.Recipients({
+      treasury: vm.addr(0x02),
+      staker: vm.addr(0x03),
+      creator: address(0)
+    });
+
+    vm.startPrank(admin);
+    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
+    vault.setRecipients(r);
   }
 }
