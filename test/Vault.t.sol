@@ -17,183 +17,195 @@ contract VaultTest is Test {
 
   address admin = vm.addr(0xBA5ED);
   address treasury = vm.addr(0xDADD1);
-  address staker = vm.addr(0x06);
-  address creator = vm.addr(0x60D);
-  address asset = vm.addr(0x012);
+  address alice = vm.addr(0xA11CE);
 
-  uint256 feeBps = 1000; // 10%
-  uint256 treasuryBps = 3500; // 35%
-  uint256 stakerBps = 4000; // 40%
-  uint256 creatorBps = 1000; // 10%
-  uint256 compounderBps = 500; // 5%
-
-  function setUp() public {
-    Vault.GlobalConfig memory globalConfig = Vault.GlobalConfig({
+  // bps: 100 -> 1%
+  Vault.Config config =
+    Vault.Config({
       name: "Vaultbird Vault",
       symbol: "VBT",
-      asset: IERC20(asset),
-      admin: admin
+      asset: IERC20(alice),
+      rewards: IERC20(alice),
+      native: IERC20(alice),
+      admin: admin,
+      treasury: alice,
+      feeDistributor: alice,
+      creator: alice,
+      reinvestMinAmount: 0,
+      reinvestFeeBps: 1000,
+      reinvestFeeTreasuryBps: 3500,
+      reinvestFeeDistributorBps: 5000,
+      reinvestFeeCreatorBps: 1000,
+      reinvestFeeCallerBps: 500
     });
-    Vault.BPS memory bps = Vault.BPS({
-      fee: feeBps,
-      treasury: treasuryBps,
-      staker: stakerBps,
-      creator: creatorBps,
-      compounder: compounderBps
-    });
-    Vault.Recipients memory recipients = Vault.Recipients({
-      treasury: treasury,
-      staker: staker,
-      creator: creator
-    });
-    vault = new Vault(globalConfig, bps, recipients);
+
+  function setUp() public {
+    vault = new Vault(config);
   }
 
-  function test_fees() public {
-    Vault.BPS memory bps = vault.bps();
-    assertEq(bps.fee, feeBps);
-    assertEq(bps.treasury, treasuryBps);
-    assertEq(bps.staker, stakerBps);
-    assertEq(bps.creator, creatorBps);
-    assertEq(bps.compounder, compounderBps);
+  function test_metadata() public {
+    assertEq(vault.name(), config.name);
+    assertEq(vault.symbol(), config.symbol);
+    assertEq(vault.owner(), config.admin);
+    assertEq(address(vault.asset()), address(config.asset));
+    assertEq(address(vault.rewards()), address(config.rewards));
+    assertEq(address(vault.native()), address(config.native));
   }
 
-  function test_recipients() public {
-    Vault.Recipients memory r = vault.recipients();
-    assertEq(r.treasury, treasury);
-    assertEq(r.staker, staker);
-    assertEq(r.creator, creator);
-  }
-
-  function test_setBps() public {
-    Vault.BPS memory newBps = Vault.BPS({
-      fee: 1000,
-      treasury: 5000,
-      staker: 4000,
-      creator: 500,
-      compounder: 500
-    });
+  function test_setTreasury() public {
+    address addr = vm.addr(0x012);
 
     vm.startPrank(admin);
-    vault.setBps(newBps);
+    vault.setTreasury(addr);
     vm.stopPrank();
 
-    Vault.BPS memory bps = vault.bps();
-    assertEq(bps.fee, newBps.fee);
-    assertEq(bps.treasury, newBps.treasury);
-    assertEq(bps.staker, newBps.staker);
-    assertEq(bps.creator, newBps.creator);
-    assertEq(bps.compounder, newBps.compounder);
+    assertEq(vault.treasury(), addr);
   }
 
-  function test_setBpsRevertNonAdmin() public {
-    Vault.BPS memory newBps = Vault.BPS({
-      fee: 1000,
-      treasury: 5000,
-      staker: 4000,
-      creator: 500,
-      compounder: 500
-    });
+  function test_setTreasuryRevertNonAdmin() public {
+    address addr = vm.addr(0x012);
 
-    vm.startPrank(creator);
+    vm.startPrank(alice);
     vm.expectRevert(
-      abi.encodeWithSelector(
-        Ownable.OwnableUnauthorizedAccount.selector,
-        creator
-      )
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
     );
-    vault.setBps(newBps);
+    vault.setTreasury(addr);
   }
 
-  function test_setBpsRevertInvalidBPS() public {
-    Vault.BPS memory newBps = Vault.BPS({
-      fee: 1000,
-      treasury: 5000,
-      staker: 5000,
-      creator: 500,
-      compounder: 500
-    });
-
+  function test_setTreasuryRevertBurnAddress() public {
     vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setBps(newBps);
-
-    newBps = Vault.BPS({
-      fee: 10000,
-      treasury: 4000,
-      staker: 5000,
-      creator: 500,
-      compounder: 500
-    });
-
-    vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidBPS.selector));
-    vault.setBps(newBps);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidTreasuryAddress.selector)
+    );
+    vault.setTreasury(address(0));
   }
 
-  function test_setRecipients() public {
-    Vault.Recipients memory r = Vault.Recipients({
-      treasury: vm.addr(0x01),
-      staker: vm.addr(0x02),
-      creator: vm.addr(0x03)
-    });
+  function test_setFeeDistributor() public {
+    address addr = vm.addr(0x012);
 
     vm.startPrank(admin);
-    vault.setRecipients(r);
+    vault.setFeeDistributor(addr);
     vm.stopPrank();
 
-    Vault.Recipients memory newR = vault.recipients();
-    assertEq(newR.treasury, r.treasury);
-    assertEq(newR.staker, r.staker);
-    assertEq(newR.creator, r.creator);
+    assertEq(vault.feeDistributor(), addr);
   }
 
-  function test_setRecipientsRevertNonAdmin() public {
-    Vault.Recipients memory r = Vault.Recipients({
-      treasury: vm.addr(0x01),
-      staker: vm.addr(0x02),
-      creator: vm.addr(0x03)
-    });
+  function test_setFeeDistributorRevertNonAdmin() public {
+    address addr = vm.addr(0x012);
 
-    vm.startPrank(creator);
+    vm.startPrank(alice);
     vm.expectRevert(
-      abi.encodeWithSelector(
-        Ownable.OwnableUnauthorizedAccount.selector,
-        creator
-      )
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
     );
-    vault.setRecipients(r);
+    vault.setFeeDistributor(addr);
   }
 
-  function test_setRecipientsRevertInvalidRecipients() public {
-    Vault.Recipients memory r = Vault.Recipients({
-      treasury: address(0),
-      staker: vm.addr(0x02),
-      creator: vm.addr(0x03)
-    });
+  function test_setFeeDistributorRevertBurnAddress() public {
+    vm.startPrank(admin);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidFeeDistributorAddress.selector)
+    );
+    vault.setFeeDistributor(address(0));
+  }
+
+  function test_setCreator() public {
+    address addr = vm.addr(0x012);
 
     vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
-    vault.setRecipients(r);
+    vault.setCreator(addr);
+    vm.stopPrank();
 
-    r = Vault.Recipients({
-      treasury: vm.addr(0x02),
-      staker: address(0),
-      creator: vm.addr(0x03)
-    });
+    assertEq(vault.creator(), addr);
+  }
+
+  function test_setCreatorRevertNonAdmin() public {
+    address addr = vm.addr(0x012);
+
+    vm.startPrank(alice);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
+    );
+    vault.setCreator(addr);
+  }
+
+  function test_setCreatorRevertBurnAddress() public {
+    vm.startPrank(admin);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidCreatorAddress.selector)
+    );
+    vault.setCreator(address(0));
+  }
+
+  function test_setReinvestMinAmount() public {
+    vm.startPrank(admin);
+    vault.setReinvestMinAmount(1 ether);
+    vm.stopPrank();
+
+    assertEq(vault.reinvestMinAmount(), 1 ether);
+  }
+
+  function test_setReinvestMinAmountRevertNonAdmin() public {
+    vm.startPrank(alice);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
+    );
+    vault.setReinvestMinAmount(1 ether);
+  }
+
+  function test_setReinvestFeeBps() public {
+    vm.startPrank(admin);
+    vault.setReinvestFeeBps(100);
+    vm.stopPrank();
+
+    assertEq(vault.reinvestFeeBps(), 100);
+  }
+
+  function test_setReinvestFeeBpsRevertNonAdmin() public {
+    vm.startPrank(alice);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
+    );
+    vault.setReinvestFeeBps(100);
+  }
+
+  function test_setReinvestFeeBpsRevertGreaterThanMax() public {
+    vm.startPrank(admin);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidReinvestFeeBps.selector)
+    );
+    vault.setReinvestFeeBps(1001);
+  }
+
+  function test_setReinvestFeeDistribution() public {
+    vm.startPrank(admin);
+    vault.setReinvestFeeDistribution(5000, 4000, 500, 500);
+    vm.stopPrank();
+
+    assertEq(vault.reinvestFeeTreasuryBps(), 5000);
+    assertEq(vault.reinvestFeeDistributorBps(), 4000);
+    assertEq(vault.reinvestFeeCreatorBps(), 500);
+    assertEq(vault.reinvestFeeCallerBps(), 500);
+  }
+
+  function test_setReinvestFeeDistributionRevertNonAdmin() public {
+    vm.startPrank(alice);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
+    );
+    vault.setReinvestFeeDistribution(5000, 4000, 500, 500);
+  }
+
+  function test_setReinvestFeeDistributionRevertInvalid() public {
+    vm.startPrank(admin);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidReinvestFeeDistribution.selector)
+    );
+    vault.setReinvestFeeDistribution(5000, 4000, 1000, 500);
 
     vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
-    vault.setRecipients(r);
-
-    r = Vault.Recipients({
-      treasury: vm.addr(0x02),
-      staker: vm.addr(0x03),
-      creator: address(0)
-    });
-
-    vm.startPrank(admin);
-    vm.expectRevert(abi.encodeWithSelector(Vault.InvalidRecipients.selector));
-    vault.setRecipients(r);
+    vm.expectRevert(
+      abi.encodeWithSelector(Vault.InvalidReinvestFeeDistribution.selector)
+    );
+    vault.setReinvestFeeDistribution(5000, 4000, 200, 500);
   }
 }

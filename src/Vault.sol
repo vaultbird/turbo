@@ -11,72 +11,119 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @notice Simple and secure auto-compounder
  */
 contract Vault is ERC4626, Ownable {
-  uint256 BPS_SCALE = 1e4;
-  uint256 MAX_FEE_BPS = 1000; // 10%
-
-  struct GlobalConfig {
+  struct Config {
     string name;
     string symbol;
     IERC20 asset;
+    IERC20 rewards;
+    IERC20 native;
     address admin;
-  }
-
-  struct BPS {
-    uint256 fee;
-    uint256 treasury;
-    uint256 staker;
-    uint256 creator;
-    uint256 compounder;
-  }
-
-  struct Recipients {
     address treasury;
-    address staker;
+    address feeDistributor;
     address creator;
+    uint256 reinvestMinAmount;
+    uint256 reinvestFeeBps;
+    uint256 reinvestFeeTreasuryBps;
+    uint256 reinvestFeeDistributorBps;
+    uint256 reinvestFeeCreatorBps;
+    uint256 reinvestFeeCallerBps;
   }
 
-  BPS private _bps;
-  Recipients private _recipients;
+  IERC20 public rewards;
+  IERC20 public native;
+  address public treasury;
+  address public feeDistributor;
+  address public creator;
 
-  error InvalidBPS();
-  error InvalidRecipients();
+  uint256 public BPS_SCALE = 1e4;
+  uint256 public MAX_FEE_BPS = 1000; // 10%
+  uint256 public reinvestMinAmount;
+  uint256 public reinvestFeeBps;
+  uint256 public reinvestFeeTreasuryBps;
+  uint256 public reinvestFeeDistributorBps;
+  uint256 public reinvestFeeCreatorBps;
+  uint256 public reinvestFeeCallerBps;
 
-  event BPSUpdated(BPS bps);
-  event RecipientsUpdated(Recipients recipients);
+  error InvalidTreasuryAddress();
+  error InvalidFeeDistributorAddress();
+  error InvalidCreatorAddress();
+  error InvalidReinvestFeeBps();
+  error InvalidReinvestFeeDistribution();
+
+  event TreasuryAddressUpdated(address);
+  event FeeDistributorAddressUpdated(address);
+  event CreatorAddressUpdated(address);
+  event ReinvestMinAmountUpdated(uint256);
+  event ReinvestFeeBpsUpdated(uint256);
+  event ReinvestFeeDistributionUpdated(
+    uint256 treasury,
+    uint256 feeDistributor,
+    uint256 creator,
+    uint256 caller
+  );
 
   constructor(
-    GlobalConfig memory g,
-    BPS memory b,
-    Recipients memory r
-  ) Ownable(msg.sender) ERC20(g.name, g.symbol) ERC4626(g.asset) {
-    setBps(b);
-    setRecipients(r);
-    transferOwnership(g.admin);
+    Config memory c
+  ) Ownable(msg.sender) ERC20(c.name, c.symbol) ERC4626(c.asset) {
+    rewards = c.rewards;
+    native = c.native;
+
+    setTreasury(c.treasury);
+    setFeeDistributor(c.feeDistributor);
+    setCreator(c.creator);
+    setReinvestMinAmount(c.reinvestMinAmount);
+    setReinvestFeeBps(c.reinvestFeeBps);
+    setReinvestFeeDistribution(
+      c.reinvestFeeTreasuryBps,
+      c.reinvestFeeDistributorBps,
+      c.reinvestFeeCreatorBps,
+      c.reinvestFeeCallerBps
+    );
+
+    transferOwnership(c.admin);
   }
 
-  /// @dev Default public getters no good, can't use struct directly
-  function bps() public view returns (BPS memory) {
-    return _bps;
+  function setTreasury(address t) public onlyOwner {
+    if (t == address(0)) revert InvalidTreasuryAddress();
+    treasury = t;
+    emit TreasuryAddressUpdated(t);
   }
 
-  /// @dev Default public getters no good, can't use struct directly
-  function recipients() public view returns (Recipients memory) {
-    return _recipients;
+  function setFeeDistributor(address fd) public onlyOwner {
+    if (fd == address(0)) revert InvalidFeeDistributorAddress();
+    feeDistributor = fd;
+    emit FeeDistributorAddressUpdated(fd);
   }
 
-  function setBps(BPS memory b) public onlyOwner {
-    uint256 total = b.treasury + b.staker + b.creator + b.compounder;
-    if (total > BPS_SCALE) revert InvalidBPS();
-    if (b.fee > MAX_FEE_BPS) revert InvalidBPS();
-    _bps = b;
-    emit BPSUpdated(_bps);
+  function setCreator(address c) public onlyOwner {
+    if (c == address(0)) revert InvalidCreatorAddress();
+    creator = c;
+    emit FeeDistributorAddressUpdated(c);
   }
 
-  function setRecipients(Recipients memory r) public onlyOwner {
-    if (r.treasury == address(0)) revert InvalidRecipients();
-    if (r.staker == address(0)) revert InvalidRecipients();
-    if (r.creator == address(0)) revert InvalidRecipients();
-    _recipients = r;
-    emit RecipientsUpdated(r);
+  function setReinvestMinAmount(uint256 a) public onlyOwner {
+    reinvestMinAmount = a;
+    emit ReinvestMinAmountUpdated(a);
+  }
+
+  function setReinvestFeeBps(uint256 bps) public onlyOwner {
+    if (bps > MAX_FEE_BPS) revert InvalidReinvestFeeBps();
+    reinvestFeeBps = bps;
+    emit ReinvestFeeBpsUpdated(bps);
+  }
+
+  function setReinvestFeeDistribution(
+    uint256 t,
+    uint256 fd,
+    uint256 cr,
+    uint256 ca
+  ) public onlyOwner {
+    uint256 total = t + fd + cr + ca;
+    if (total != BPS_SCALE) revert InvalidReinvestFeeDistribution();
+    reinvestFeeTreasuryBps = t;
+    reinvestFeeDistributorBps = fd;
+    reinvestFeeCreatorBps = cr;
+    reinvestFeeCallerBps = ca;
+    emit ReinvestFeeDistributionUpdated(t, fd, cr, ca);
   }
 }
