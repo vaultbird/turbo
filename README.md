@@ -1,3 +1,3 @@
-## Vaultbird Strategies
+## Vaultbird Vault
 
-One-click DeFi strategies.
+Vaultbird Vault is an ERC4626-based auto-compounder.

@@ -2,10 +2,11 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-solc = "0.8.21"
+solc = "0.8.23"
 evm_version = "paris"
 remappings = [
   "src/=src/",
+  "@std/=lib/forge-std/src/",
   "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
 
