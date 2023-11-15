@@ -7,13 +7,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "src/Vault.sol";
 
+contract DemoVault is Vault {
+  constructor(Config memory c) Vault(c) {}
+
+  function _invest(uint256 amount) internal override {}
+
+  function _reinvest() internal override {}
+}
+
 /**
  * @title Vault Test
  * @author sepyke.eth
  * @notice Test basic functionalities
  */
 contract VaultTest is Test {
-  Vault vault;
+  DemoVault vault;
 
   address admin = vm.addr(0xBA5ED);
   address treasury = vm.addr(0xDADD1);
@@ -40,7 +48,7 @@ contract VaultTest is Test {
     });
 
   function setUp() public {
-    vault = new Vault(config);
+    vault = new DemoVault(config);
   }
 
   function test_metadata() public {
