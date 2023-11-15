@@ -1,3 +1,3 @@
-## Vaultbird Vault
+## Vaultbird Autocompounder
 
-Vaultbird Vault is an ERC4626-based auto-compounder.
+Grow your crypto faster by using Vaultbird Autocompounder.
