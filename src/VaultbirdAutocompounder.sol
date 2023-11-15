@@ -4,28 +4,24 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
-import "./interfaces/IVaultbirdStrategy.sol";
 
 /**
- * @title Vaultbird Vault
+ * @title Vaultbird Autocompounder
  * @author sepyke.eth
- * @dev Simple, secure and extensible ERC4626
+ * @dev Simple & secure auto-compounder
  * @custom:contact security@vaultbird.com
  */
-abstract contract VaultbirdVault is ERC4626, Ownable {
-  using Math for uint256;
-
+contract VaultbirdAutocompounder is ERC4626, Ownable {
   struct Config {
     string name;
     string symbol;
     IERC20 asset;
+    IERC20 rewards;
     IERC20 native;
-    IVaultbirdStrategy strategy;
     address admin;
     address treasury;
     address feeDistributor;
+    address strategist;
     uint256 reinvestMinAmount;
     uint256 reinvestFeeBps;
     uint256 reinvestFeeTreasuryBps;
@@ -34,13 +30,14 @@ abstract contract VaultbirdVault is ERC4626, Ownable {
     uint256 reinvestFeeCallerBps;
   }
 
+  IERC20 public rewards;
   IERC20 public native;
-  IVaultbirdStrategy public strategy;
 
   address public treasury;
   address public feeDistributor;
+  address public strategist;
 
-  uint256 public BPS_SCALE = 1e4;
+  uint256 private BPS_SCALE = 1e4;
   uint256 public MAX_FEE_BPS = 1000; // 10%
   uint256 public reinvestMinAmount;
   uint256 public reinvestFeeBps;
@@ -49,31 +46,33 @@ abstract contract VaultbirdVault is ERC4626, Ownable {
   uint256 public reinvestFeeStrategistBps;
   uint256 public reinvestFeeCallerBps;
 
-  error InvalidStrategyAddress();
   error InvalidTreasuryAddress();
   error InvalidFeeDistributorAddress();
+  error InvalidStrategistAddress();
   error InvalidReinvestFeeBps();
   error InvalidReinvestFeeDistribution();
 
   event TreasuryAddressUpdated(address);
   event FeeDistributorAddressUpdated(address);
-  event CreatorAddressUpdated(address);
+  event StrategistAddressUpdated(address);
   event ReinvestMinAmountUpdated(uint256);
   event ReinvestFeeBpsUpdated(uint256);
   event ReinvestFeeDistributionUpdated(
     uint256 treasury,
     uint256 feeDistributor,
-    uint256 creator,
+    uint256 strategist,
     uint256 caller
   );
 
   constructor(
     Config memory c
   ) Ownable(msg.sender) ERC20(c.name, c.symbol) ERC4626(c.asset) {
+    rewards = c.rewards;
     native = c.native;
 
     setTreasury(c.treasury);
     setFeeDistributor(c.feeDistributor);
+    setStrategist(c.strategist);
     setReinvestMinAmount(c.reinvestMinAmount);
     setReinvestFeeBps(c.reinvestFeeBps);
     setReinvestFeeDistribution(
@@ -84,14 +83,6 @@ abstract contract VaultbirdVault is ERC4626, Ownable {
     );
 
     transferOwnership(c.admin);
-  }
-
-  function setStrategy(IVaultbirdStrategy newStrategy) public onlyOwner {
-    if (newStrategy == address(0)) revert InvalidStrategyAddress();
-    // TODO(pyk): gimana
-    strategy.free();
-
-    emit TreasuryAddressUpdated(t);
   }
 
   function setTreasury(address t) public onlyOwner {
@@ -106,10 +97,10 @@ abstract contract VaultbirdVault is ERC4626, Ownable {
     emit FeeDistributorAddressUpdated(fd);
   }
 
-  function setCreator(address c) public onlyOwner {
-    if (c == address(0)) revert InvalidStrategyAddress();
-    creator = c;
-    emit FeeDistributorAddressUpdated(c);
+  function setStrategist(address s) public onlyOwner {
+    if (s == address(0)) revert InvalidStrategistAddress();
+    strategist = s;
+    emit StrategistAddressUpdated(s);
   }
 
   function setReinvestMinAmount(uint256 a) public onlyOwner {
@@ -124,55 +115,22 @@ abstract contract VaultbirdVault is ERC4626, Ownable {
   }
 
   function setReinvestFeeDistribution(
-    uint256 t,
-    uint256 fd,
-    uint256 cr,
-    uint256 ca
+    uint256 treasury_,
+    uint256 feeDistributor_,
+    uint256 strategist_,
+    uint256 caller_
   ) public onlyOwner {
-    uint256 total = t + fd + cr + ca;
+    uint256 total = treasury_ + feeDistributor_ + strategist_ + caller_;
     if (total != BPS_SCALE) revert InvalidReinvestFeeDistribution();
-    reinvestFeeTreasuryBps = t;
-    reinvestFeeDistributorBps = fd;
-    reinvestFeeStrategistBps = cr;
-    reinvestFeeCallerBps = ca;
-    emit ReinvestFeeDistributionUpdated(t, fd, cr, ca);
+    reinvestFeeTreasuryBps = treasury_;
+    reinvestFeeDistributorBps = feeDistributor_;
+    reinvestFeeStrategistBps = strategist_;
+    reinvestFeeCallerBps = caller_;
+    emit ReinvestFeeDistributionUpdated(
+      treasury_,
+      feeDistributor_,
+      strategist_,
+      caller_
+    );
   }
-
-  function _getFeeAmount(
-    uint256 rewardAmount
-  ) internal view returns (uint256 feeAmount) {
-    return rewardAmount.mulDiv(reinvestFeeBps, BPS_SCALE, Math.Rounding.Ceil);
-  }
-
-  function _deposit(
-    address caller,
-    address receiver,
-    uint256 assets,
-    uint256 shares
-  ) internal virtual override {
-    _reinvest(0);
-    super._deposit(caller, receiver, assets, shares);
-    _invest(assets);
-  }
-
-  function _distributeFees(uint256 feeAmount) internal {
-    uint256 nativeAmount = _swapRewardsToNative(feeAmount);
-  }
-
-  function _invest(uint256 amount) internal virtual;
-
-  function _reinvest(uint256 minAmount) internal virtual;
-
-  function _swapRewardsToNative(
-    uint256 amount
-  ) internal virtual returns (uint256);
-
-  // _reinvest()
-  // _invest(amount)
-
-  // TODO(pyk): add
-  // - _getFeeAmount()
-  // - _swapRewardsToNative(amount)
-  // - _distributeFees(amount)
-  // swap fees to native
 }
