@@ -6,7 +6,7 @@ helping you grow your assets faster. Vaultbird Turbo is built on the
 [ERC-4626](https://erc4626.info) standard, ensuring seamless integration with
 other DeFi platforms and protocols.
 
-[Go to Vaultbird Turbo Documentation](https://docs.vaultbird.com/turbo/introduction).
+[Go to Vaultbird Turbo Documentation](https://docs.vaultbird.com/turbo/introduction)
 
 ## Getting started
 
