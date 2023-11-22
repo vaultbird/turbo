@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
  * @title Vaultbird Turbo
@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Simple, efficient & secure auto-compounder
  * @custom:contact security@vaultbird.com
  */
-contract VaultbirdTurbo is ERC4626, Ownable {
+contract VaultbirdTurbo is ERC4626, Ownable2Step {
   struct Config {
     string name;
     string symbol;
@@ -37,8 +37,8 @@ contract VaultbirdTurbo is ERC4626, Ownable {
   address public feeDistributor;
   address public strategist;
 
-  uint256 private BPS_SCALE = 1e4;
-  uint256 public MAX_FEE_BPS = 1000; // 10%
+  uint256 private constant BPS_SCALE = 1e4;
+  uint256 public constant MAX_FEE_BPS = 1000; // 10%
   uint256 public reinvestMinAmount;
   uint256 public reinvestFeeBps;
   uint256 public reinvestFeeTreasuryBps;
@@ -57,16 +57,9 @@ contract VaultbirdTurbo is ERC4626, Ownable {
   event StrategistAddressUpdated(address);
   event ReinvestMinAmountUpdated(uint256);
   event ReinvestFeeBpsUpdated(uint256);
-  event ReinvestFeeDistributionUpdated(
-    uint256 treasury,
-    uint256 feeDistributor,
-    uint256 strategist,
-    uint256 caller
-  );
+  event ReinvestFeeDistributionUpdated(uint256 treasury, uint256 feeDistributor, uint256 strategist, uint256 caller);
 
-  constructor(
-    Config memory c
-  ) Ownable(msg.sender) ERC20(c.name, c.symbol) ERC4626(c.asset) {
+  constructor(Config memory c) Ownable(msg.sender) ERC20(c.name, c.symbol) ERC4626(c.asset) {
     rewards = c.rewards;
     native = c.native;
 
@@ -75,62 +68,47 @@ contract VaultbirdTurbo is ERC4626, Ownable {
     setStrategist(c.strategist);
     setReinvestMinAmount(c.reinvestMinAmount);
     setReinvestFeeBps(c.reinvestFeeBps);
-    setReinvestFeeDistribution(
-      c.reinvestFeeTreasuryBps,
-      c.reinvestFeeDistributorBps,
-      c.reinvestFeeStrategistBps,
-      c.reinvestFeeCallerBps
-    );
+    setReinvestFeeDistribution(c.reinvestFeeTreasuryBps, c.reinvestFeeDistributorBps, c.reinvestFeeStrategistBps, c.reinvestFeeCallerBps);
 
-    transferOwnership(c.admin);
+    _transferOwnership(c.admin);
   }
 
-  function setTreasury(address t) public onlyOwner {
-    if (t == address(0)) revert InvalidTreasuryAddress();
-    treasury = t;
-    emit TreasuryAddressUpdated(t);
+  function setTreasury(address treasury_) public onlyOwner {
+    if (treasury_ == address(0)) revert InvalidTreasuryAddress();
+    treasury = treasury_;
+    emit TreasuryAddressUpdated(treasury_);
   }
 
-  function setFeeDistributor(address fd) public onlyOwner {
-    if (fd == address(0)) revert InvalidFeeDistributorAddress();
-    feeDistributor = fd;
-    emit FeeDistributorAddressUpdated(fd);
+  function setFeeDistributor(address feeDistributor_) public onlyOwner {
+    if (feeDistributor_ == address(0)) revert InvalidFeeDistributorAddress();
+    feeDistributor = feeDistributor_;
+    emit FeeDistributorAddressUpdated(feeDistributor_);
   }
 
-  function setStrategist(address s) public onlyOwner {
-    if (s == address(0)) revert InvalidStrategistAddress();
-    strategist = s;
-    emit StrategistAddressUpdated(s);
+  function setStrategist(address strategist_) public onlyOwner {
+    if (strategist_ == address(0)) revert InvalidStrategistAddress();
+    strategist = strategist_;
+    emit StrategistAddressUpdated(strategist_);
   }
 
-  function setReinvestMinAmount(uint256 a) public onlyOwner {
-    reinvestMinAmount = a;
-    emit ReinvestMinAmountUpdated(a);
+  function setReinvestMinAmount(uint256 amount_) public onlyOwner {
+    reinvestMinAmount = amount_;
+    emit ReinvestMinAmountUpdated(amount_);
   }
 
-  function setReinvestFeeBps(uint256 bps) public onlyOwner {
-    if (bps > MAX_FEE_BPS) revert InvalidReinvestFeeBps();
-    reinvestFeeBps = bps;
-    emit ReinvestFeeBpsUpdated(bps);
+  function setReinvestFeeBps(uint256 bps_) public onlyOwner {
+    if (bps_ > MAX_FEE_BPS) revert InvalidReinvestFeeBps();
+    reinvestFeeBps = bps_;
+    emit ReinvestFeeBpsUpdated(bps_);
   }
 
-  function setReinvestFeeDistribution(
-    uint256 treasury_,
-    uint256 feeDistributor_,
-    uint256 strategist_,
-    uint256 caller_
-  ) public onlyOwner {
+  function setReinvestFeeDistribution(uint256 treasury_, uint256 feeDistributor_, uint256 strategist_, uint256 caller_) public onlyOwner {
     uint256 total = treasury_ + feeDistributor_ + strategist_ + caller_;
     if (total != BPS_SCALE) revert InvalidReinvestFeeDistribution();
     reinvestFeeTreasuryBps = treasury_;
     reinvestFeeDistributorBps = feeDistributor_;
     reinvestFeeStrategistBps = strategist_;
     reinvestFeeCallerBps = caller_;
-    emit ReinvestFeeDistributionUpdated(
-      treasury_,
-      feeDistributor_,
-      strategist_,
-      caller_
-    );
+    emit ReinvestFeeDistributionUpdated(treasury_, feeDistributor_, strategist_, caller_);
   }
 }

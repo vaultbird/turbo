@@ -3,13 +3,13 @@ pragma solidity 0.8.23;
 
 import "@std/Test.sol";
 
-import "src/VaultbirdTurbo.sol";
+import "contracts/VaultbirdTurbo.sol";
 
 /**
  * @title Vaultbird Turbo Admin test
  * @author sepyke.eth
  * @dev Test admin functionalities
- * @custom:contact security@autocompounderbird.com
+ * @custom:contact security@vaultbird.com
  */
 contract VaultbirdTurboAdminTest is Test {
   address admin = vm.addr(0xBA5ED);
@@ -58,17 +58,13 @@ contract VaultbirdTurboAdminTest is Test {
     address newTreasury = vm.addr(0x012);
 
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setTreasury(newTreasury);
   }
 
   function test_setTreasuryRevertBurnAddress() public {
     vm.startPrank(admin);
-    vm.expectRevert(
-      abi.encodeWithSelector(VaultbirdTurbo.InvalidTreasuryAddress.selector)
-    );
+    vm.expectRevert(abi.encodeWithSelector(VaultbirdTurbo.InvalidTreasuryAddress.selector));
     autocompounder.setTreasury(address(0));
   }
 
@@ -87,19 +83,13 @@ contract VaultbirdTurboAdminTest is Test {
     address addr = vm.addr(0x012);
 
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setFeeDistributor(addr);
   }
 
   function test_setFeeDistributorRevertBurnAddress() public {
     vm.startPrank(admin);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        VaultbirdTurbo.InvalidFeeDistributorAddress.selector
-      )
-    );
+    vm.expectRevert(abi.encodeWithSelector(VaultbirdTurbo.InvalidFeeDistributorAddress.selector));
     autocompounder.setFeeDistributor(address(0));
   }
 
@@ -118,17 +108,13 @@ contract VaultbirdTurboAdminTest is Test {
     address newStrategist = vm.addr(0x012);
 
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setStrategist(newStrategist);
   }
 
   function test_setStrategistRevertBurnAddress() public {
     vm.startPrank(admin);
-    vm.expectRevert(
-      abi.encodeWithSelector(VaultbirdTurbo.InvalidStrategistAddress.selector)
-    );
+    vm.expectRevert(abi.encodeWithSelector(VaultbirdTurbo.InvalidStrategistAddress.selector));
     autocompounder.setStrategist(address(0));
   }
 
@@ -144,9 +130,7 @@ contract VaultbirdTurboAdminTest is Test {
 
   function test_setReinvestMinAmountRevertNonAdmin() public {
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setReinvestMinAmount(1 ether);
   }
 
@@ -162,17 +146,13 @@ contract VaultbirdTurboAdminTest is Test {
 
   function test_setReinvestFeeBpsRevertNonAdmin() public {
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setReinvestFeeBps(100);
   }
 
   function test_setReinvestFeeBpsRevertGreaterThanMax() public {
     vm.startPrank(admin);
-    vm.expectRevert(
-      abi.encodeWithSelector(VaultbirdTurbo.InvalidReinvestFeeBps.selector)
-    );
+    vm.expectRevert(abi.encodeWithSelector(VaultbirdTurbo.InvalidReinvestFeeBps.selector));
     autocompounder.setReinvestFeeBps(1001);
   }
 
@@ -194,19 +174,13 @@ contract VaultbirdTurboAdminTest is Test {
 
   function test_setReinvestFeeDistributionRevertNonAdmin() public {
     vm.startPrank(alice);
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
     autocompounder.setReinvestFeeDistribution(5000, 4000, 500, 500);
   }
 
   function test_setReinvestFeeDistributionRevertInvalid() public {
     vm.startPrank(admin);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        VaultbirdTurbo.InvalidReinvestFeeDistribution.selector
-      )
-    );
+    vm.expectRevert(abi.encodeWithSelector(VaultbirdTurbo.InvalidReinvestFeeDistribution.selector));
     autocompounder.setReinvestFeeDistribution(5000, 4000, 1000, 500);
   }
 }
