@@ -3,23 +3,23 @@ pragma solidity 0.8.23;
 
 import "@std/Test.sol";
 
-import "src/VaultbirdAutocompounder.sol";
+import "src/VaultbirdTurbo.sol";
 
 /**
- * @title Vaultbird Autocompounder Admin test
+ * @title Vaultbird Turbo Admin test
  * @author sepyke.eth
  * @dev Test admin functionalities
  * @custom:contact security@autocompounderbird.com
  */
-contract VaultbirdAutocompounderAdminTest is Test {
+contract VaultbirdTurboAdminTest is Test {
   address admin = vm.addr(0xBA5ED);
   address treasury = vm.addr(0xDADD1);
   address alice = vm.addr(0xA11CE);
   address random = vm.addr(0x8888);
 
   // bps: 100 -> 1%
-  VaultbirdAutocompounder.Config config =
-    VaultbirdAutocompounder.Config({
+  VaultbirdTurbo.Config config =
+    VaultbirdTurbo.Config({
       name: "Vaultbird Vault",
       symbol: "VV",
       asset: IERC20(random),
@@ -37,10 +37,10 @@ contract VaultbirdAutocompounderAdminTest is Test {
       reinvestFeeCallerBps: 500
     });
 
-  VaultbirdAutocompounder autocompounder;
+  VaultbirdTurbo autocompounder;
 
   function setUp() public {
-    autocompounder = new VaultbirdAutocompounder(config);
+    autocompounder = new VaultbirdTurbo(config);
   }
 
   function test_setTreasury() public {
@@ -67,9 +67,7 @@ contract VaultbirdAutocompounderAdminTest is Test {
   function test_setTreasuryRevertBurnAddress() public {
     vm.startPrank(admin);
     vm.expectRevert(
-      abi.encodeWithSelector(
-        VaultbirdAutocompounder.InvalidTreasuryAddress.selector
-      )
+      abi.encodeWithSelector(VaultbirdTurbo.InvalidTreasuryAddress.selector)
     );
     autocompounder.setTreasury(address(0));
   }
@@ -99,7 +97,7 @@ contract VaultbirdAutocompounderAdminTest is Test {
     vm.startPrank(admin);
     vm.expectRevert(
       abi.encodeWithSelector(
-        VaultbirdAutocompounder.InvalidFeeDistributorAddress.selector
+        VaultbirdTurbo.InvalidFeeDistributorAddress.selector
       )
     );
     autocompounder.setFeeDistributor(address(0));
@@ -129,9 +127,7 @@ contract VaultbirdAutocompounderAdminTest is Test {
   function test_setStrategistRevertBurnAddress() public {
     vm.startPrank(admin);
     vm.expectRevert(
-      abi.encodeWithSelector(
-        VaultbirdAutocompounder.InvalidStrategistAddress.selector
-      )
+      abi.encodeWithSelector(VaultbirdTurbo.InvalidStrategistAddress.selector)
     );
     autocompounder.setStrategist(address(0));
   }
@@ -175,9 +171,7 @@ contract VaultbirdAutocompounderAdminTest is Test {
   function test_setReinvestFeeBpsRevertGreaterThanMax() public {
     vm.startPrank(admin);
     vm.expectRevert(
-      abi.encodeWithSelector(
-        VaultbirdAutocompounder.InvalidReinvestFeeBps.selector
-      )
+      abi.encodeWithSelector(VaultbirdTurbo.InvalidReinvestFeeBps.selector)
     );
     autocompounder.setReinvestFeeBps(1001);
   }
@@ -210,7 +204,7 @@ contract VaultbirdAutocompounderAdminTest is Test {
     vm.startPrank(admin);
     vm.expectRevert(
       abi.encodeWithSelector(
-        VaultbirdAutocompounder.InvalidReinvestFeeDistribution.selector
+        VaultbirdTurbo.InvalidReinvestFeeDistribution.selector
       )
     );
     autocompounder.setReinvestFeeDistribution(5000, 4000, 1000, 500);
