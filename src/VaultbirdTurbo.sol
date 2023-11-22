@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title Vaultbird Autocompounder
+ * @title Vaultbird Turbo
  * @author sepyke.eth
- * @dev Simple & secure auto-compounder
+ * @dev Simple, efficient & secure auto-compounder
  * @custom:contact security@vaultbird.com
  */
-contract VaultbirdAutocompounder is ERC4626, Ownable {
+contract VaultbirdTurbo is ERC4626, Ownable {
   struct Config {
     string name;
     string symbol;
